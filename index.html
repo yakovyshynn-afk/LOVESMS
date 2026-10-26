@@ -126,7 +126,7 @@
   .sound.show { opacity: 1; transform: none; pointer-events: auto; }
   .sound.off { text-decoration: line-through; opacity: .55; }
   .sound:focus-visible { outline: 2px solid var(--ink-soft); outline-offset: 3px; }
-  #fx { position: fixed; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 5; }
+  #fx { position: fixed; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 8; }
   .flash {
     position: fixed; inset: 0; pointer-events: none; z-index: 4;
     background: radial-gradient(circle at var(--fx-x, 50%) var(--fx-y, 50%), rgba(255, 236, 230, .9), rgba(255, 236, 230, 0) 45%);
@@ -153,8 +153,55 @@
     pointer-events: none;
   }
   .note .w { display: inline-block; white-space: nowrap; }
-  .note .c { display: inline-block; opacity: 0; transform: translateY(5px) scale(.85); filter: blur(3px); }
-  .is-open .note .c { animation: ink .4s ease forwards; }
+  .note p { position: relative; margin: 0; }
+  /* each letter is revealed left-to-right, like a pen stroke */
+  .note .c { display: inline-block; clip-path: inset(-30% 100% -30% -10%); color: #3d0f19; }
+  .is-open .note .c { animation: write var(--d, .1s) linear forwards, dry 1.6s ease forwards; }
+  @keyframes write { to { clip-path: inset(-30% -10% -30% -10%); } }
+  @keyframes dry { from { color: #3d0f19; } to { color: var(--ink); } }
+  .pen {
+    position: absolute; left: 0; top: 0; width: 30px; height: 30px;
+    margin: -28px 0 0 -2px; /* nib tip sits on the point */
+    pointer-events: none; opacity: 0;
+    transition: left var(--pd, .1s) linear, top .12s ease, opacity .3s ease;
+    filter: drop-shadow(1px 2px 1px rgba(60, 15, 25, .25));
+  }
+  .pen.on { opacity: 1; }
+  .doodle { width: 34px; height: 30px; margin: 2px auto 0; display: block; overflow: visible; }
+  .doodle path { fill: none; stroke: var(--wax); stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; stroke-dasharray: 100; stroke-dashoffset: 100; }
+  .written .doodle path { animation: draw 1.1s ease forwards; }
+  @keyframes draw { to { stroke-dashoffset: 0; } }
+
+  .stage.enter .env { animation: drop 1.1s cubic-bezier(.2,1.2,.4,1) both; }
+  .stage.enter .label { animation: rise .9s ease .5s both, bob 2.6s ease-in-out 1.4s infinite; }
+  @keyframes drop { from { opacity: 0; transform: translateY(-40px) rotate(-6deg) scale(.9); } }
+  @keyframes rise { from { opacity: 0; transform: translateY(10px); } }
+
+  .intro {
+    position: fixed; inset: 0; z-index: 7;
+    display: grid; place-items: center;
+    padding-left: max(24px, env(safe-area-inset-left, 0px));
+    padding-right: max(24px, env(safe-area-inset-right, 0px));
+    padding-block: 24px;
+    background: var(--ground) url("assets/bg.webp") center / cover no-repeat;
+    transition: opacity 1s ease, visibility 0s linear 1s;
+    cursor: pointer;
+  }
+  .intro.out { opacity: 0; visibility: hidden; }
+  .poem { display: grid; gap: 10px; text-align: center; max-width: 38ch; }
+  .poem p {
+    margin: 0; font-family: var(--serif); font-style: italic; font-weight: 500;
+    font-size: clamp(20px, 5.4vw, 32px); line-height: 1.25; color: var(--ink);
+    text-wrap: balance;
+    opacity: 0; transform: translateY(12px); filter: blur(6px);
+  }
+  .poem p.last { font-family: var(--note); font-style: normal; font-weight: 700; font-size: clamp(30px, 8.4vw, 44px); color: var(--wax); margin-top: 8px; }
+  .intro.play .poem p { animation: verse 1.4s ease forwards; }
+  .intro.play .poem p:nth-child(2) { animation-delay: 1.4s; }
+  .intro.play .poem p:nth-child(3) { animation-delay: 2.8s; }
+  .intro.play .poem p:nth-child(4) { animation-delay: 4.2s; }
+  @keyframes verse { to { opacity: 1; transform: none; filter: none; } }
+  .skip { position: absolute; left: 0; right: 0; bottom: calc(22px + env(safe-area-inset-bottom, 0px)); text-align: center; font-family: var(--serif); font-style: italic; font-size: 16px; color: var(--ink-soft); opacity: .7; margin: 0; }
 
   .after {
     display: flex; gap: 14px; align-items: center; justify-content: center; flex-wrap: wrap;
@@ -163,7 +210,7 @@
     transition: opacity .5s ease, transform .5s ease;
     pointer-events: none;
   }
-  .opened .after { opacity: 1; transform: none; pointer-events: auto; transition-delay: 2s; }
+  .written .after { opacity: 1; transform: none; pointer-events: auto; transition-delay: .6s; }
   .hint { font-style: italic; font-size: 18px; color: var(--ink-soft); margin: 0; }
   .again {
     font-family: var(--note); font-weight: 700; font-size: 22px;
@@ -188,6 +235,15 @@
 <div class="flash" id="flash" aria-hidden="true"></div>
 <audio id="music" src="assets/track.mp3" loop preload="auto"></audio>
 <button class="sound" id="sound" type="button" aria-label="Вимкнути музику">&#9834;</button>
+<div class="intro" id="intro" role="dialog" aria-label="Вірш">
+  <div class="poem">
+    <p>Хай кілометри між нами і тиша,</p>
+    <p>хай сказано зайве — пробач.</p>
+    <p>Серце моє тобі знову пише:</p>
+    <p class="last">відкрий, прочитай і не плач</p>
+  </div>
+  <p class="skip">торкнись, щоб продовжити</p>
+</div>
 <main class="stage" id="stage">
   <div class="wrap">
     <p class="label" aria-hidden="true">відкрий мене</p>
@@ -271,13 +327,18 @@
     return p;
   }
 
-  // letters appear one by one, like being written
+  // handwriting: letters are revealed in order, a pen nib follows them
+  const PEN = '<svg viewBox="0 0 30 30" aria-hidden="true"><path d="M3 27 L7 18 L22 3 L27 8 L12 23 Z" fill="#f4ead9" stroke="#5a1f2b" stroke-width="1.4" stroke-linejoin="round"/><path d="M3 27 L7 18 L12 23 Z" fill="#3d0f19"/><path d="M19 6 L24 11" stroke="#5a1f2b" stroke-width="1.2"/></svg>';
+  let penTimers = [], plan = [];
   function render(text) {
+    penTimers.forEach(clearTimeout); penTimers = [];
+    stage.classList.remove("written");
     note.innerHTML = "";
+    const box = document.createElement("div");
     const p = document.createElement("p");
-    p.style.margin = "0";
-    note.append(p);
-    let n = 0;
+    box.append(p);
+    note.append(box);
+    const chars = [];
     text.split(" ").forEach(word => {
       const w = document.createElement("span");
       w.className = "w";
@@ -285,12 +346,48 @@
         const c = document.createElement("span");
         c.className = "c";
         c.textContent = ch;
-        c.style.animationDelay = (1.3 + n++ * 0.05) + "s";
-        w.append(c);
+        w.append(c); chars.push(c);
       }
-      n++;
       p.append(w, " ");
     });
+    const pen = document.createElement("span");
+    pen.className = "pen"; pen.innerHTML = PEN;
+    p.append(pen);
+    const doodle = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+    doodle.setAttribute("viewBox", "0 0 34 30");
+    doodle.setAttribute("class", "doodle");
+    doodle.innerHTML = '<path pathLength="100" d="M17 27 C 6 19, 1 12, 5 6 C 9 1, 15 3, 17 9 C 19 3, 25 1, 29 6 C 33 12, 28 19, 17 27 Z"/>';
+    box.append(doodle);
+
+    // timing plan: speed in px/s, pauses between words and lines
+    plan = []; let t = 1.25, prevTop = null, prevRight = null;
+    chars.forEach(c => {
+      const x = c.offsetLeft, y = c.offsetTop + c.offsetHeight * .82, w = c.offsetWidth;
+      if (prevTop !== null && c.offsetTop !== prevTop) t += .22;          // new line: pen lifts
+      else if (prevRight !== null && x - prevRight > 2) t += .07;          // space between words
+      const d = Math.max(.05, w / 150);
+      c.style.setProperty("--d", d + "s");
+      c.style.animationDelay = t + "s, " + t + "s";
+      plan.push({ t, d, x, y, w });
+      t += d; prevTop = c.offsetTop; prevRight = x + w;
+    });
+    plan.end = t;
+    return pen;
+  }
+  function writeOut(pen) {
+    if (reduce) { stage.classList.add("written"); return; }
+    plan.forEach((s, i) => {
+      penTimers.push(setTimeout(() => {
+        pen.style.setProperty("--pd", "0s");
+        pen.style.left = s.x + "px"; pen.style.top = s.y + "px";
+        pen.classList.add("on");
+        requestAnimationFrame(() => {
+          pen.style.setProperty("--pd", s.d + "s");
+          pen.style.left = (s.x + s.w) + "px";
+        });
+      }, s.t * 1000));
+    });
+    penTimers.push(setTimeout(() => { pen.classList.remove("on"); stage.classList.add("written"); }, plan.end * 1000 + 150));
   }
 
   /* ---------- particles ---------- */
@@ -425,7 +522,7 @@
     if (env.classList.contains("is-open")) return;
     startMusic();
     sound.classList.add("show");
-    render(pick());
+    const pen = render(pick());
     env.classList.add("shake");
     try { navigator.vibrate && navigator.vibrate([25, 60, 40]); } catch (e) {}
     setTimeout(() => {
@@ -438,6 +535,7 @@
       env.classList.remove("shake");
       env.classList.add("is-open");
       stage.classList.add("opened");
+      writeOut(pen);
       env.setAttribute("aria-label", current);
       setTimeout(() => floatHearts(env.getBoundingClientRect()), 1600);
     }, 380);
@@ -455,11 +553,32 @@
     }
   });
   again.addEventListener("click", () => {
+    penTimers.forEach(clearTimeout);
     env.classList.remove("is-open");
-    stage.classList.remove("opened");
+    stage.classList.remove("opened", "written");
     env.setAttribute("aria-label", "Відкрий мене");
     setTimeout(open, 900);
   });
+
+  const intro = document.getElementById("intro");
+  let introDone = false;
+  function endIntro() {
+    if (introDone) return; introDone = true;
+    intro.classList.add("out");
+    stage.classList.add("enter");
+    try { sessionStorage.setItem("introSeen", "1"); } catch (e) {}
+  }
+  intro.addEventListener("click", endIntro);
+  let seen = false;
+  try { seen = sessionStorage.getItem("introSeen") === "1"; } catch (e) {}
+  if (seen) { intro.remove(); stage.classList.add("enter"); introDone = true; }
+  else {
+    const imgs = [...document.querySelectorAll(".env img")].map(i => i.decode ? i.decode().catch(() => {}) : null);
+    Promise.race([Promise.all(imgs), new Promise(r => setTimeout(r, 2500))]).then(() => {
+      intro.classList.add("play");
+      setTimeout(endIntro, reduce ? 4000 : 7600);
+    });
+  }
 </script>
 
 </body>

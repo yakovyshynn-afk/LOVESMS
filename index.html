@@ -238,6 +238,22 @@
     "Ти варта всіх кілометрів між нами"
   ];
 
+  // after the quarrel: shown on the very first opening and in ~40% of the rest
+  const SORRY = [
+    "Пробач мене, кохана",
+    "Вибач. Ти важливіша за будь-яку сварку",
+    "Мені шкода, що зробив тобі боляче",
+    "Ми команда, навіть коли сваримось",
+    "Жодна сварка не сильніша за моє кохання",
+    "Давай помиримось? Я дуже сумую",
+    "Я чую тебе і хочу, щоб тобі було добре",
+    "Ти важливіша, ніж бути правим",
+    "Після сварки я кохаю тебе не менше",
+    "Хочу все виправити. Разом",
+    "Обійми все вирішать. Чекаю на них",
+    "Я поруч, навіть коли нам складно"
+  ];
+
   const env = document.getElementById("env");
   const note = document.getElementById("note");
   const stage = document.getElementById("stage");
@@ -247,7 +263,8 @@
   function pick() {
     let last = null;
     try { last = localStorage.getItem("lastPhrase"); } catch (e) {}
-    const pool = PHRASES.filter(p => p !== last && p !== current);
+    const fromSorry = last === null || Math.random() < .4;
+    const pool = (fromSorry ? SORRY : PHRASES).filter(p => p !== last && p !== current);
     const p = pool[Math.floor(Math.random() * pool.length)];
     try { localStorage.setItem("lastPhrase", p); } catch (e) {}
     current = p;
